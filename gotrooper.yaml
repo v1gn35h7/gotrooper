@@ -1,0 +1,10 @@
+kafka:
+  bootstrapServers: "localhost:29092"
+  producers:
+    -
+      topic: "trooper-events"
+
+    -
+      topic: "trooper-scripts-results"
+
+    

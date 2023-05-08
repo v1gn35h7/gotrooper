@@ -1,0 +1,8 @@
+High level Spec - goTrooper
+====================================================
+1. Read a config  flag
+2. Support verbrose
+3. Collect telemetry
+4. Send telemetry to server
+5. Support script execution and scheduling
+6. Push out script results to log aggregators
