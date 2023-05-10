@@ -9,7 +9,7 @@ import (
 )
 
 // Setups logger instance
-func SetUpLogger() logr.Logger {
+func Logger() logr.Logger {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 
 	zerologr.NameFieldName = "logger"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/go-logr/zerologr"
-	"github.com/goTrooper/pkg/kafka"
+	"github.com/v1gn35h7/gotrooper/pkg/kafka"
 	"golang.org/x/sys/windows"
 )
 
