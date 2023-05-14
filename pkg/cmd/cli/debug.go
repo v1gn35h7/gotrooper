@@ -9,8 +9,8 @@ import (
 func NewDebugCommand() *cobra.Command {
 	var debugCmd = &cobra.Command{
 		Use:   "debug",
-		Short: "goshellctl debug",
-		Long:  "Debug Util for GoshellCtl",
+		Short: "gotrooper debug",
+		Long:  "Debug Util for gotrooper",
 		Run: func(cmd *cobra.Command, args []string) {
 			debug.PrintStack()
 		},

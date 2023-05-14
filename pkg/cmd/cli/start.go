@@ -2,9 +2,10 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/v1gn35h7/gotrooper/pkg/kafka"
+	"github.com/spf13/viper"
+	"github.com/v1gn35h7/gotrooper/internal/client"
 	"github.com/v1gn35h7/gotrooper/pkg/logging"
-	"github.com/v1gn35h7/gotrooper/pkg/telemetry"
+	"github.com/v1gn35h7/gotrooper/pkg/workers"
 )
 
 func NewStartCommand() *cobra.Command {
@@ -17,12 +18,13 @@ func NewStartCommand() *cobra.Command {
 			logger := logging.Logger()
 			logger.Info("Logger initated...")
 
-			//Bootstrap kafka client
-			kclient := kafka.NewKafkaClient(logger)
+			// Set-up gRPC client
+			conc := client.SetupGrpcClient(logger)
+			defer conc.Close()
 
-			// Start telemetry collection
-			tel := telemetry.NewTelemetryUtil(logger, kclient)
-			tel.StartCollectingTelemetry()
+			// Start service
+			pollInterval := viper.GetInt64("goshell.refreshInterval")
+			workers.PollWorker(logger, conc).StartPolling(pollInterval)
 
 		},
 	}

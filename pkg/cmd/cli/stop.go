@@ -7,8 +7,8 @@ import (
 func NewStopCommand() *cobra.Command {
 	var stopCmd = &cobra.Command{
 		Use:   "version",
-		Short: "goshellctl stope",
-		Long:  "Stopa Goshell version",
+		Short: "gotrooper stope",
+		Long:  "Stopa gotrooper version",
 		Run: func(cmd *cobra.Command, args []string) {
 
 		},

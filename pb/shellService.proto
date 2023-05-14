@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "github.com/v1gn35h7/gotrooper/pb";
+
+
+service ShellService {
+    rpc GetScripts (ShellRequest) returns (ShellResponse) {}
+}
+
+
+message ShellRequest {
+    string AgentId = 1;
+}
+
+message ShellResponse {
+   repeated ShellScript Scripts = 1;
+}
+
+message ShellScript {
+    string script = 1;
+    string args = 2;
+    string type = 3;
+}

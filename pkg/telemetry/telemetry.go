@@ -1,12 +1,15 @@
 package telemetry
 
 import (
+	"context"
+	"os"
 	"strconv"
+	"time"
 
-	"github.com/Shopify/sarama"
 	"github.com/go-logr/zerologr"
-	"github.com/v1gn35h7/gotrooper/pkg/kafka"
+	"github.com/v1gn35h7/gotrooper/pb"
 	"golang.org/x/sys/windows"
+	"google.golang.org/grpc"
 )
 
 // unsafe.Sizeof(windows.ProcessEntry32{})
@@ -14,15 +17,15 @@ const processEntrySize = 568
 
 type TelemetryUtil struct {
 	logger          zerologr.Logger
-	kclient         *kafka.KafkaClient
 	processSnapShot map[string]string
+	grpcConc        *grpc.ClientConn
 }
 
-func NewTelemetryUtil(logr zerologr.Logger, client *kafka.KafkaClient) *TelemetryUtil {
+func NewTelemetryUtil(logr zerologr.Logger, conc *grpc.ClientConn) *TelemetryUtil {
 	return &TelemetryUtil{
 		logger:          logr,
-		kclient:         client,
 		processSnapShot: make(map[string]string),
+		grpcConc:        conc,
 	}
 }
 
@@ -67,48 +70,20 @@ func (tele *TelemetryUtil) enumProcessess() {
 }
 
 func (tele *TelemetryUtil) submitTrooperEvent(event string) {
-	producer := tele.kclient.Producer
-	if producer == nil {
-		return
-	}
 
-	// Start Kafka transaction
-	err := producer.BeginTxn()
+	// TODO: Send proto bufs to server
+	c := pb.NewShellServiceClient(tele.grpcConc)
+
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1000)
+	defer cancel()
+
+	hostName, _ := os.Hostname()
+	r, err := c.GetScripts(ctx, &pb.ShellRequest{AgentId: hostName})
 	if err != nil {
-		tele.logger.Error(err, "Kafa transtcion failied")
+		tele.logger.Error(err, "could not send proto message")
+	} else {
+		tele.logger.Info("Response from gRPC server", "response", r.Scripts)
 	}
 
-	//eventsTopic := viper.GetString("kafka.producers[0].topic")
-
-	producer.Input() <- &sarama.ProducerMessage{Topic: "trooper-events", Key: sarama.StringEncoder(event), Value: sarama.StringEncoder(event)}
-
-	// commit transaction
-	err = producer.CommitTxn()
-	if err != nil {
-		tele.logger.Error(err, "Producer: unable to commit tx")
-		for {
-			if producer.TxnStatus()&sarama.ProducerTxnFlagFatalError != 0 {
-				// fatal error. need to recreate producer.
-				tele.logger.Info("Producer: producer is in a fatal state, need to recreate it")
-				break
-			}
-			// If producer is in abortable state, try to abort current transaction.
-			if producer.TxnStatus()&sarama.ProducerTxnFlagAbortableError != 0 {
-				err = producer.AbortTxn()
-				if err != nil {
-					// If an error occured just retry it.
-					tele.logger.Error(err, "Producer: unable to abort transaction")
-					continue
-				}
-				break
-			}
-			// if not you can retry
-			err = producer.CommitTxn()
-			if err != nil {
-				tele.logger.Error(err, "Producer: unable to commit txn")
-				continue
-			}
-		}
-		return
-	}
 }
