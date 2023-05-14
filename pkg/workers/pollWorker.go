@@ -8,19 +8,22 @@ import (
 
 	"github.com/go-logr/zerologr"
 	"github.com/v1gn35h7/gotrooper/pb"
-	"github.com/v1gn35h7/gotrooper/pkg/shell"
 	"google.golang.org/grpc"
 )
 
 type pollWorker struct {
 	logger   zerologr.Logger
 	grpcConc *grpc.ClientConn
+	jobQueue chan string
+	wg       *sync.WaitGroup
 }
 
-func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn) *pollWorker {
+func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan string, wgrp *sync.WaitGroup) *pollWorker {
 	return &pollWorker{
 		logger:   lgr,
 		grpcConc: conc,
+		jobQueue: jq,
+		wg:       wgrp,
 	}
 }
 
@@ -31,10 +34,8 @@ func (pw *pollWorker) StartPolling(interval int64) {
 
 	ticker := time.NewTicker(time.Second * time.Duration(interval))
 	quit := make(chan bool)
-	var wg sync.WaitGroup
-	wg.Add(1)
+	pw.wg.Add(1)
 	go func() {
-		defer wg.Done()
 
 		for {
 			select {
@@ -46,9 +47,6 @@ func (pw *pollWorker) StartPolling(interval int64) {
 			}
 		}
 	}()
-
-	// Wait for all goroutine to complete
-	wg.Wait()
 
 }
 
@@ -69,7 +67,7 @@ func getScripts(pw *pollWorker, quit chan bool) {
 		} else {
 			pw.logger.Info("Response from gRPC server", "response", r.Scripts)
 			for _, v := range r.Scripts {
-				shell.ExecuteScript(v.Script)
+				pw.jobQueue <- v.Script
 			}
 		}
 	}

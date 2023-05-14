@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"sync"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/v1gn35h7/gotrooper/internal/client"
@@ -22,9 +24,21 @@ func NewStartCommand() *cobra.Command {
 			conc := client.SetupGrpcClient(logger)
 			defer conc.Close()
 
-			// Start service
+			// Create job quee
+			jobQueue := make(chan string, 100)
+
+			var wg sync.WaitGroup
+			defer wg.Done()
+
+			//Start executor workers
+			workers.Executors(logger, jobQueue, &wg).StartExecutors()
+
+			// Start polling go routine
 			pollInterval := viper.GetInt64("goshell.refreshInterval")
-			workers.PollWorker(logger, conc).StartPolling(pollInterval)
+			workers.PollWorker(logger, conc, jobQueue, &wg).StartPolling(pollInterval)
+
+			// Wait for all go routines to complete
+			wg.Wait()
 
 		},
 	}
