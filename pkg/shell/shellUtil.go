@@ -1,20 +1,17 @@
 package shell
 
 import (
-	"fmt"
 	"os/exec"
 )
 
-func ExecuteScript(script string) {
+func ExecuteScript(script string) (string, error) {
 	cmd := exec.Command("powershell.exe", script)
 
 	stdout, err := cmd.Output()
 
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return "", err
 	}
 
-	fmt.Print(string(stdout))
-
+	return string(stdout), nil
 }

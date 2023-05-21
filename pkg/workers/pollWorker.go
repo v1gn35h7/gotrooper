@@ -3,10 +3,12 @@ package workers
 import (
 	"context"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/go-logr/zerologr"
+	"github.com/v1gn35h7/gotrooper/internal/utils"
 	"github.com/v1gn35h7/gotrooper/pb"
 	"google.golang.org/grpc"
 )
@@ -60,7 +62,10 @@ func getScripts(pw *pollWorker, quit chan bool) {
 		defer cancel()
 
 		hostName, _ := os.Hostname()
-		r, err := c.GetScripts(ctx, &pb.ShellRequest{AgentId: hostName})
+		platform := runtime.GOOS
+		arch := runtime.GOARCH
+		osName := utils.GetOs(platform)
+		r, err := c.GetScripts(ctx, &pb.ShellRequest{AgentId: hostName, Platform: platform, Architecture: arch, OperatingSystem: osName})
 		if err != nil {
 			pw.logger.Error(err, "could not send proto message")
 			quit <- true

@@ -10,6 +10,10 @@ service ShellService {
 
 message ShellRequest {
     string AgentId = 1;
+    string Platform = 2;
+    string OperatingSystem = 3;
+    string Architecture = 4;
+
 }
 
 message ShellResponse {
