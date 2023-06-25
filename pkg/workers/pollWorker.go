@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/zerologr"
+	"github.com/spf13/viper"
 	"github.com/v1gn35h7/gotrooper/internal/utils"
 	"github.com/v1gn35h7/gotrooper/pb"
 	"google.golang.org/grpc"
@@ -61,11 +62,12 @@ func getScripts(pw *pollWorker, quit chan bool) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1000)
 		defer cancel()
 
+		agentId := viper.GetString("gotrooper.hostId")
 		hostName, _ := os.Hostname()
 		platform := runtime.GOOS
 		arch := runtime.GOARCH
 		osName := utils.GetOs(platform)
-		r, err := c.GetScripts(ctx, &pb.ShellRequest{AgentId: hostName, Platform: platform, Architecture: arch, OperatingSystem: osName})
+		r, err := c.GetScripts(ctx, &pb.ShellRequest{AgentId: agentId, Platform: platform, Architecture: arch, OperatingSystem: osName, Hostname: hostName})
 		if err != nil {
 			pw.logger.Error(err, "could not send proto message")
 			quit <- true

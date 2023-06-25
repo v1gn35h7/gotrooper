@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-logr/zerologr"
 	"github.com/v1gn35h7/gotrooper/internal/goshell"
-	"github.com/v1gn35h7/gotrooper/pkg/logging"
+	"github.com/v1gn35h7/gotrooper/internal/pb"
 	"github.com/v1gn35h7/gotrooper/pkg/shell"
 )
 
@@ -56,7 +56,12 @@ func execWorker(ctx context.Context, id int, exec *executor) {
 				exec.logger.Error(err, "Script execution failed", "scriptId", "")
 			}
 
-			logging.SaveOutputToLog(output, exec.outputFile)
+			//logging.SaveOutputToLog(output, exec.outputFile)
+			err = pb.SaveOutputToPb(output, exec.outputFile)
+
+			if err != nil {
+				exec.logger.Error(err, "Error saving the output")
+			}
 
 		case <-ctx.Done():
 			exec.wg.Done()

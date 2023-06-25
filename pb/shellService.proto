@@ -5,6 +5,7 @@ option go_package = "github.com/v1gn35h7/gotrooper/pb";
 
 service ShellService {
     rpc GetScripts (ShellRequest) returns (ShellResponse) {}
+    rpc SendFragment (ShellFragmentRquest) returns (FragmentResponse) {}
 }
 
 
@@ -13,7 +14,7 @@ message ShellRequest {
     string Platform = 2;
     string OperatingSystem = 3;
     string Architecture = 4;
-
+    string Hostname = 5;
 }
 
 message ShellResponse {
@@ -24,4 +25,19 @@ message ShellScript {
     string script = 1;
     string args = 2;
     string type = 3;
+}
+
+message ShellScriptOutput {
+	string AgentId  = 1;
+	string HostName = 2;
+	string ScriptId = 3;
+	string Output   = 4;
+}
+
+message ShellFragmentRquest {
+     repeated ShellScriptOutput outputs = 1;
+}
+
+message FragmentResponse {
+    int32 Awknowledgement = 1;
 }

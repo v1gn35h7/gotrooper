@@ -23,16 +23,18 @@ func NewStartCommand() *cobra.Command {
 			logger := logging.Logger()
 			logger.Info("Logger initated...")
 
+			homeDir, _ := os.UserHomeDir()
+
 			// Setup output file
 			outputFilePath := viper.GetString("outputFile")
 
 			if outputFilePath == "" {
-				homeDir, _ := os.UserHomeDir()
 				outputFilePath = filepath.Join(homeDir, "gotrooper.log")
 
 			}
 
-			file, err := os.OpenFile(outputFilePath, os.O_CREATE, os.ModeAppend)
+			file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0777)
+			defer file.Close()
 
 			if err != nil {
 				logger.Error(err, "Failed to create output file")
@@ -56,8 +58,22 @@ func NewStartCommand() *cobra.Command {
 			workers.Executors(logger, jobQueue, &wg, outputFile).StartExecutors()
 
 			// Start polling go routine
-			pollInterval := viper.GetInt64("goshell.refreshInterval")
+			pollInterval := viper.GetInt64("gotrooper.goshell.refreshInterval")
 			workers.PollWorker(logger, conc, jobQueue, &wg).StartPolling(pollInterval)
+
+			// Start pb uploader
+			regFilePath := filepath.Join(homeDir, "gotrooper_registry.log")
+			regfile, err := os.OpenFile(regFilePath, os.O_CREATE, 0777)
+			if err != nil {
+				logger.Error(err, "Failed to open registry file")
+			}
+			defer regfile.Close()
+
+			registryFile := &goshell.RegistryFile{
+				File: regfile,
+			}
+
+			workers.NewHarvestWorker(logger, conc, &wg, outputFile, registryFile).StartHarvest()
 
 			// Wait for all go routines to complete
 			wg.Wait()

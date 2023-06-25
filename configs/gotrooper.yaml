@@ -1,6 +1,7 @@
 gotrooper:
   version: "0.1.0"
-
-goshell:
-  host: "localhost:8082"
-  refreshInterval: 10
+  hostId: c8acb80a-5202-47bc-937f-70aea0cb7cdd
+  harvestInterval: 1 # seconds
+  goshell:
+    host: "localhost:8082"
+    refreshInterval: 10

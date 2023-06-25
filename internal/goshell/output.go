@@ -7,7 +7,7 @@ import (
 
 type OutputFile struct {
 	File  *os.File
-	Mutex sync.Mutex
+	Mutex sync.RWMutex
 }
 
 type ScriptOutput struct {

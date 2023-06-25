@@ -10,7 +10,7 @@ import (
 )
 
 func SetupGrpcClient(logger logr.Logger) *grpc.ClientConn {
-	grpcAddr := viper.GetString("goshell.host")
+	grpcAddr := viper.GetString("gotrooper.goshell.host")
 
 	conc, err := grpc.Dial(grpcAddr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 
