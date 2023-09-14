@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-logr/zerologr"
+	"github.com/reugn/go-quartz/quartz"
 	"github.com/spf13/viper"
 	"github.com/v1gn35h7/gotrooper/internal/utils"
 	"github.com/v1gn35h7/gotrooper/pb"
@@ -15,10 +16,11 @@ import (
 )
 
 type pollWorker struct {
-	logger   zerologr.Logger
-	grpcConc *grpc.ClientConn
-	jobQueue chan string
-	wg       *sync.WaitGroup
+	logger    zerologr.Logger
+	grpcConc  *grpc.ClientConn
+	jobQueue  chan string
+	wg        *sync.WaitGroup
+	scheduler *quartz.Scheduler
 }
 
 func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan string, wgrp *sync.WaitGroup) *pollWorker {

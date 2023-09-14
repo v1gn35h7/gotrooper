@@ -27,5 +27,8 @@ func SaveOutputToPb(output string, outputFile *goshell.OutputFile) error {
 
 	out, _ := proto.Marshal(shellOut)
 	_, err := outputFile.File.Write(out)
+
+	// Add delimiter
+	_, err = outputFile.File.Write([]byte("$$$#$$$"))
 	return err
 }

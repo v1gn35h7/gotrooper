@@ -17,7 +17,7 @@ func NewStartCommand() *cobra.Command {
 	var startCmd = &cobra.Command{
 		Use:   "start",
 		Short: "gotrooper start",
-		Long:  "Starts gotrooper cli process",
+		Long:  "Starts gotrooper cli application",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Set-up logger
 			logger := logging.Logger()
@@ -30,7 +30,6 @@ func NewStartCommand() *cobra.Command {
 
 			if outputFilePath == "" {
 				outputFilePath = filepath.Join(homeDir, "gotrooper.log")
-
 			}
 
 			file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0777)
@@ -54,14 +53,22 @@ func NewStartCommand() *cobra.Command {
 			var wg sync.WaitGroup
 			defer wg.Done()
 
-			//Start executor workers
-			workers.Executors(logger, jobQueue, &wg, outputFile).StartExecutors()
+			// Setup internal store
+			//store := store.NewTrooperStore()
 
-			// Start polling go routine
+			//Starts executor workers
+			// *this is only for realtime script execution
+			// workers.Executors(logger, jobQueue, &wg, outputFile).StartExecutors()
+
+			// Starts scheduuler
+			//trooper_schedlr, scheduler_cancel := scheduler.TooperScheduler()
+			//defer scheduler_cancel()
+
+			// Starts polling worker
 			pollInterval := viper.GetInt64("gotrooper.goshell.refreshInterval")
 			workers.PollWorker(logger, conc, jobQueue, &wg).StartPolling(pollInterval)
 
-			// Start pb uploader
+			// Starts upload worker]
 			regFilePath := filepath.Join(homeDir, "gotrooper_registry.log")
 			regfile, err := os.OpenFile(regFilePath, os.O_CREATE, 0777)
 			if err != nil {

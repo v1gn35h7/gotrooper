@@ -73,7 +73,7 @@ func (hw *harvestWorker) harvest() {
 
 	finfo, _ := hw.outputFile.File.Stat()
 
-	if finfo.Size() != 0 && finfo.Size() > hw.prevFileSize {
+	if finfo.Size() != 0 && finfo.Size() >= hw.prevFileSize {
 		hw.prevFileSize = finfo.Size()
 
 		for {
@@ -168,7 +168,7 @@ func (hw *harvestWorker) parseFragmentFromBytes() []*pb.ShellScriptOutput {
 		fragment.WriteByte(chunk)
 	}
 
-	fileContents := strings.Split(fragment.String(), "\n\n\n")
+	fileContents := strings.Split(fragment.String(), "$$$#$$$")
 
 	for _, msg := range fileContents {
 		pbmsg := pb.ShellScriptOutput{}
