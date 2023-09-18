@@ -9,7 +9,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/v1gn35h7/gotrooper/internal/client"
 	"github.com/v1gn35h7/gotrooper/internal/goshell"
+	"github.com/v1gn35h7/gotrooper/pb"
 	"github.com/v1gn35h7/gotrooper/pkg/logging"
+	"github.com/v1gn35h7/gotrooper/pkg/scheduler"
 	"github.com/v1gn35h7/gotrooper/pkg/workers"
 )
 
@@ -48,7 +50,7 @@ func NewStartCommand() *cobra.Command {
 			defer conc.Close()
 
 			// Create job quee
-			jobQueue := make(chan string, 100)
+			jobQueue := make(chan *pb.ShellScript, 100)
 
 			var wg sync.WaitGroup
 			defer wg.Done()
@@ -56,13 +58,12 @@ func NewStartCommand() *cobra.Command {
 			// Setup internal store
 			//store := store.NewTrooperStore()
 
-			//Starts executor workers
-			// *this is only for realtime script execution
-			// workers.Executors(logger, jobQueue, &wg, outputFile).StartExecutors()
-
 			// Starts scheduuler
-			//trooper_schedlr, scheduler_cancel := scheduler.TooperScheduler()
-			//defer scheduler_cancel()
+			trooper_schedlr, scheduler_cancel := scheduler.TooperScheduler()
+			defer scheduler_cancel()
+
+			//Starts executor workers
+			workers.Executors(logger, jobQueue, &wg, outputFile, trooper_schedlr).StartExecutors()
 
 			// Starts polling worker
 			pollInterval := viper.GetInt64("gotrooper.goshell.refreshInterval")

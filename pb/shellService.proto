@@ -25,6 +25,8 @@ message ShellScript {
     string script = 1;
     string args = 2;
     string type = 3;
+    string frequency = 4;
+    string id = 5;
 }
 
 message ShellScriptOutput {

@@ -11,15 +11,13 @@ import (
 type shippingWorker struct {
 	logger   zerologr.Logger
 	grpcConc *grpc.ClientConn
-	jobQueue chan string
 	wg       *sync.WaitGroup
 }
 
-func ShippingWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan string, wgrp *sync.WaitGroup) *pollWorker {
+func ShippingWorker(lgr zerologr.Logger, conc *grpc.ClientConn, wgrp *sync.WaitGroup) *pollWorker {
 	return &pollWorker{
 		logger:   lgr,
 		grpcConc: conc,
-		jobQueue: jq,
 		wg:       wgrp,
 	}
 }

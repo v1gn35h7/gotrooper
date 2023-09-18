@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-logr/zerologr"
-	"github.com/reugn/go-quartz/quartz"
 	"github.com/spf13/viper"
 	"github.com/v1gn35h7/gotrooper/internal/utils"
 	"github.com/v1gn35h7/gotrooper/pb"
@@ -16,14 +15,13 @@ import (
 )
 
 type pollWorker struct {
-	logger    zerologr.Logger
-	grpcConc  *grpc.ClientConn
-	jobQueue  chan string
-	wg        *sync.WaitGroup
-	scheduler *quartz.Scheduler
+	logger   zerologr.Logger
+	grpcConc *grpc.ClientConn
+	jobQueue chan *pb.ShellScript
+	wg       *sync.WaitGroup
 }
 
-func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan string, wgrp *sync.WaitGroup) *pollWorker {
+func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan *pb.ShellScript, wgrp *sync.WaitGroup) *pollWorker {
 	return &pollWorker{
 		logger:   lgr,
 		grpcConc: conc,
@@ -41,7 +39,6 @@ func (pw *pollWorker) StartPolling(interval int64) {
 	quit := make(chan bool)
 	pw.wg.Add(1)
 	go func() {
-
 		for {
 			select {
 			case <-ticker.C:
@@ -76,7 +73,7 @@ func getScripts(pw *pollWorker, quit chan bool) {
 		} else {
 			pw.logger.Info("Response from gRPC server", "response", r.Scripts)
 			for _, v := range r.Scripts {
-				pw.jobQueue <- v.Script
+				pw.jobQueue <- v
 			}
 		}
 	}

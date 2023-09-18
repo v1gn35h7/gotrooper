@@ -15,5 +15,8 @@ func TooperScheduler() (quartz.Scheduler, context.CancelFunc) {
 	// async start scheduler
 	sched.Start(ctx)
 
+	// wait for all workers to exit
+	// sched.Wait(ctx)
+
 	return sched, cancel
 }
