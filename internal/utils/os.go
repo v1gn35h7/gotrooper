@@ -11,8 +11,10 @@ func GetOs(platform string) string {
 	if platform == "windows" {
 		out := ExecuteCmd(OS_SYSTEM_INFO_CMD)
 		list := strings.Split(out, "\n")
-		os := strings.Split(list[2], ":")
-		osName = strings.TrimSpace(os[1])
+		if len(list) > 1 {
+			os := strings.Split(list[2], ":")
+			osName = strings.TrimSpace(os[1])
+		}
 	}
 
 	return osName

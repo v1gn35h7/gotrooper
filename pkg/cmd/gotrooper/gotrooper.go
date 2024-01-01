@@ -11,6 +11,7 @@ import (
 
 var (
 	configPath string
+	verbose    bool
 )
 
 func NewCommand() *cobra.Command {
@@ -29,6 +30,7 @@ func NewCommand() *cobra.Command {
 
 	// Bind cli flags
 	rootCmd.PersistentFlags().StringVar(&configPath, "configPath", "", "config file path")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", true, "verbose mode")
 
 	// Add sub commands
 	rootCmd.AddCommand(cli.NewVersionCommand())

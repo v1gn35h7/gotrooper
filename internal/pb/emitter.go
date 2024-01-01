@@ -2,6 +2,7 @@ package pb
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -26,9 +27,24 @@ func SaveOutputToPb(output string, outputFile *goshell.OutputFile) error {
 	}
 
 	out, _ := proto.Marshal(shellOut)
-	_, err := outputFile.File.Write(out)
 
-	// Add delimiter
-	_, err = outputFile.File.Write([]byte("$$$#$$$"))
+	size := len(out)
+
+	// Add size
+	_, err := outputFile.File.Write([]byte(strconv.Itoa(size)))
+	if err != nil {
+		return err
+	}
+
+	_, err = outputFile.File.Write([]byte("\n"))
+	if err != nil {
+		return err
+	}
+
+	_, err = outputFile.File.Write(out)
+	if err != nil {
+		return err
+	}
+
 	return err
 }

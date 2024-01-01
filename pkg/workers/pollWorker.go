@@ -33,19 +33,24 @@ func PollWorker(lgr zerologr.Logger, conc *grpc.ClientConn, jq chan *pb.ShellScr
 /*
 * https://stackoverflow.com/questions/16466320/is-there-a-way-to-do-repetitive-tasks-at-intervals
  */
-func (pw *pollWorker) StartPolling(interval int64) {
+func (pw *pollWorker) StartPolling(ctx context.Context, interval int64) {
 
 	ticker := time.NewTicker(time.Second * time.Duration(interval))
 	quit := make(chan bool)
 	pw.wg.Add(1)
 	go func() {
+		defer pw.wg.Done()
 		for {
 			select {
 			case <-ticker.C:
 				getScripts(pw, quit)
 			case <-quit:
 				ticker.Stop()
-				close(quit)
+				return
+			case <-ctx.Done():
+				pw.logger.Info("Stopped poll worker ...")
+				ticker.Stop()
+				return
 			}
 		}
 	}()
@@ -70,6 +75,7 @@ func getScripts(pw *pollWorker, quit chan bool) {
 		if err != nil {
 			pw.logger.Error(err, "could not send proto message")
 			quit <- true
+			close(quit)
 		} else {
 			pw.logger.Info("Response from gRPC server", "response", r.Scripts)
 			for _, v := range r.Scripts {

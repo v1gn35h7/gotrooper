@@ -1,7 +1,9 @@
 package workers
 
 import (
+	"bufio"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -41,26 +43,28 @@ func NewHarvestWorker(lgr zerologr.Logger, conc *grpc.ClientConn, wgrp *sync.Wai
 	}
 }
 
-func (hw *harvestWorker) StartHarvest() {
-	harvestInterval := viper.GetInt64("gotrooper.harvestInterval")
-	ticker := time.NewTicker(time.Second * time.Duration(harvestInterval))
-	quit := make(chan bool, 1)
-	hw.wg.Add(1)
+func (hw *harvestWorker) StartHarvest(ctx context.Context) {
+	// harvestInterval := viper.GetInt64("gotrooper.harvestInterval")
+	// ticker := time.NewTicker(time.Second * time.Duration(harvestInterval))
 
-	// interval
-	go func() {
+	// hw.wg.Add(1)
+	// // interval
+	// go func() {
+	// 	defer hw.wg.Done()
 
-		for {
-			select {
-			case <-ticker.C:
-				hw.harvest()
-			case <-quit:
-				ticker.Stop()
-				hw.wg.Done()
-				close(quit)
-			}
-		}
-	}()
+	// 	for {
+	// 		select {
+	// 		case <-ticker.C:
+	// 			hw.harvest()
+	// 		case <-ctx.Done():
+	// 			hw.logger.Info("Stopped Harvest workers...")
+	// 			ticker.Stop()
+	// 			hw.outputFile.File.Close()
+	// 			return
+	// 		}
+	// 	}
+	// }()
+	hw.harvest()
 
 }
 
@@ -73,38 +77,84 @@ func (hw *harvestWorker) harvest() {
 
 	finfo, _ := hw.outputFile.File.Stat()
 
-	if finfo.Size() != 0 && finfo.Size() >= hw.prevFileSize {
-		hw.prevFileSize = finfo.Size()
+	//fmt.Println(finfo.Size())
+
+	if finfo.Size() != 0 {
+
+		parsedData := make([]*pb.ShellScriptOutput, 0)
+
+		br := bufio.NewReader(hw.outputFile.File)
 
 		for {
-			rb, err := hw.outputFile.File.Read(hw.fragmentData) //, int64(harvestPoint))
+			size, _, err := br.ReadLine()
+			if err != nil {
+				if viper.GetBool("verbose") == true {
+					hw.logger.Error(err, "Failed to read file")
+				}
+				hw.resyncFile()
+				br = bufio.NewReader(hw.outputFile.File)
+				br.Discard(int(hw.fragmentSize))
+				continue
+			}
+
+			s := strings.TrimSpace(string(size))
+			hw.fragmentSize += int64(len([]byte(s)))
+
+			//	_, err = br.Read(make([]byte, len([]byte(s))-1))
 
 			if err != nil {
-				if err.Error() == "EOF" {
-					break
+				if viper.GetBool("verbose") == true {
+					hw.logger.Error(err, "Failed to read file")
 				}
-				hw.logger.Error(err, "Falied to read output file")
-			} else {
-				if rb == 0 {
-					break
+				hw.resyncFile()
+				br = bufio.NewReader(hw.outputFile.File)
+				br.Discard(int(hw.fragmentSize))
+				continue
+			}
+
+			msgSize, _ := strconv.Atoi(s)
+			hw.fragmentSize += int64(msgSize)
+
+			pmsg := make([]byte, msgSize)
+
+			r, err := io.ReadFull(br, pmsg)
+
+			if err != nil {
+				if viper.GetBool("verbose") == true {
+					hw.logger.Error(err, "Failed to read file")
 				}
+				hw.resyncFile()
+				br = bufio.NewReader(hw.outputFile.File)
+				br.Discard(int(hw.fragmentSize))
+				continue
+			}
 
-				hw.fragmentSize += int64(rb)
+			if r == 0 {
+				continue
+			}
 
-				if hw.fragmentSize > 100 {
-					hw.shipDataFragment()
-				}
+			//fmt.Println(string(pmsg))
 
+			pbmsg := pb.ShellScriptOutput{}
+
+			er := proto.Unmarshal(pmsg, &pbmsg)
+
+			if er != nil {
+				hw.logger.Error(er, "Failed to parse")
+			}
+
+			parsedData = append(parsedData, &pbmsg)
+
+			if len(parsedData) > 10 {
+				hw.shipDataFragment(parsedData)
+				//clear(parsedData)
+				parsedData = make([]*pb.ShellScriptOutput, 0)
 			}
 		}
 	}
-
-	// Sent to server
-	//if rb ==
-
 }
 
-func (hw *harvestWorker) shipDataFragment() {
+func (hw *harvestWorker) shipDataFragment(messages []*pb.ShellScriptOutput) {
 	// Poll for scripts
 	{
 		c := pb.NewShellServiceClient(hw.grpcConc)
@@ -114,10 +164,8 @@ func (hw *harvestWorker) shipDataFragment() {
 		defer cancel()
 
 		req := &pb.ShellFragmentRquest{}
-		//req.Outputs = append(req.Outputs)
-		outputPorots := hw.parseFragmentFromBytes()
 
-		req.Outputs = outputPorots
+		req.Outputs = messages
 
 		r, err := c.SendFragment(ctx, req)
 		if err != nil {
@@ -126,6 +174,22 @@ func (hw *harvestWorker) shipDataFragment() {
 			hw.logger.Info("Response from gRPC server", "response", r.Awknowledgement)
 		}
 	}
+}
+
+func (hw *harvestWorker) resyncFile() {
+
+	hdir, _ := os.UserHomeDir()
+
+	hw.outputFile.File.Close()
+
+	outFilePath := filepath.Join(hdir, "gotrooper.txtpb")
+
+	ofile, err := os.OpenFile(outFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0777)
+
+	if err != nil {
+		hw.logger.Error(err, "Failed to resync output file")
+	}
+	hw.outputFile.File = ofile
 }
 
 func createRegFile(logger zerologr.Logger) *goshell.RegistryFile {
@@ -167,6 +231,8 @@ func (hw *harvestWorker) parseFragmentFromBytes() []*pb.ShellScriptOutput {
 	for _, chunk := range hw.fragmentData {
 		fragment.WriteByte(chunk)
 	}
+
+	//fmt.Println(fragment.String())
 
 	fileContents := strings.Split(fragment.String(), "$$$#$$$")
 

@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,17 +24,21 @@ func NewStartCommand() *cobra.Command {
 		Short: "gotrooper start",
 		Long:  "Starts gotrooper cli application",
 		Run: func(cmd *cobra.Command, args []string) {
+
+			viper.BindPFlag("verbose", cmd.PersistentFlags().Lookup("verbose"))
+
+			homeDir, _ := os.UserHomeDir()
+
 			// Set-up logger
 			logger := logging.Logger()
 			logger.Info("Logger initated...")
-
-			homeDir, _ := os.UserHomeDir()
+			defer logging.Close()
 
 			// Setup output file
 			outputFilePath := viper.GetString("outputFile")
 
 			if outputFilePath == "" {
-				outputFilePath = filepath.Join(homeDir, "gotrooper.log")
+				outputFilePath = filepath.Join(homeDir, "gotrooper.txtpb")
 			}
 
 			file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0777)
@@ -49,27 +56,28 @@ func NewStartCommand() *cobra.Command {
 			conc := client.SetupGrpcClient(logger)
 			defer conc.Close()
 
+			// Setup clean up
+			ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
 			// Create job quee
 			jobQueue := make(chan *pb.ShellScript, 100)
 
 			var wg sync.WaitGroup
-			defer wg.Done()
 
 			// Setup internal store
 			//store := store.NewTrooperStore()
 
 			// Starts scheduuler
-			trooper_schedlr, scheduler_cancel := scheduler.TooperScheduler()
-			defer scheduler_cancel()
+			trooper_schedlr := scheduler.TooperScheduler(ctx)
 
 			//Starts executor workers
-			workers.Executors(logger, jobQueue, &wg, outputFile, trooper_schedlr).StartExecutors()
+			workers.Executors(logger, jobQueue, &wg, outputFile, trooper_schedlr).StartExecutors(ctx)
 
 			// Starts polling worker
 			pollInterval := viper.GetInt64("gotrooper.goshell.refreshInterval")
-			workers.PollWorker(logger, conc, jobQueue, &wg).StartPolling(pollInterval)
+			workers.PollWorker(logger, conc, jobQueue, &wg).StartPolling(ctx, pollInterval)
 
-			// Starts upload worker]
+			// Starts upload worker
 			regFilePath := filepath.Join(homeDir, "gotrooper_registry.log")
 			regfile, err := os.OpenFile(regFilePath, os.O_CREATE, 0777)
 			if err != nil {
@@ -81,7 +89,7 @@ func NewStartCommand() *cobra.Command {
 				File: regfile,
 			}
 
-			workers.NewHarvestWorker(logger, conc, &wg, outputFile, registryFile).StartHarvest()
+			workers.NewHarvestWorker(logger, conc, &wg, outputFile, registryFile).StartHarvest(ctx)
 
 			// Wait for all go routines to complete
 			wg.Wait()

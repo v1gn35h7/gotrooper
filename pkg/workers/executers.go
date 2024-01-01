@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"runtime"
 	"sync"
 
@@ -35,61 +36,74 @@ func Executors(lgr zerologr.Logger, jq chan *pb.ShellScript, wgrp *sync.WaitGrou
 	}
 }
 
-func (exec *executor) StartExecutors() {
+func (e *executor) StartExecutors(ctx context.Context) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	ctx, _ := context.WithCancel(context.Background())
-
-	for i := 0; i < 1; i++ {
-		exec.wg.Add(1)
-
-		go execWorker(ctx, i, exec)
-
-	}
+	go execWorkers(ctx, rand.Int(), e)
 
 }
 
-func execWorker(ctx context.Context, id int, exec *executor) {
+func execWorkers(ctx context.Context, id int, exec *executor) {
+	sem := make(chan struct{}, runtime.NumCPU())
+
+	exec.wg.Add(1)
+	defer exec.wg.Done()
+
 	exec.logger.Info(fmt.Sprintf("Executor %d started...", id))
+
+	// Reads from job queue and fires a goroutine to process the job
 	for {
 		select {
 		case script := <-exec.jobQueue:
 			exec.logger.Info("Job recevied", "script", script.Script)
 
-			// Check local state
-			_, ok := exec.jobs[script.Id]
+			sem <- struct{}{}
 
-			if !ok {
+			func() {
+				exec.wg.Add(1)
+				defer func() {
+					exec.wg.Done()
+					<-sem
+				}()
 
-				// create jobs
-				cronTrigger, _ := quartz.NewCronTrigger(script.Frequency)
-				functionJob := quartz.NewFunctionJob(func(_ context.Context) (string, error) {
-					output, err := shell.ExecuteScript(script.Script)
+				// Check local state
+				_, ok := exec.jobs[script.Id]
 
-					if err != nil {
-						exec.logger.Error(err, "Script execution failed", "scriptId", "")
-						return "", err
-					}
+				if !ok {
 
-					//logging.SaveOutputToLog(output, exec.outputFile)
-					err = gpb.SaveOutputToPb(output, exec.outputFile)
+					// create jobs
+					cronTrigger, _ := quartz.NewCronTrigger(script.Frequency)
+					functionJob := quartz.NewFunctionJob(func(_ context.Context) (string, error) {
+						output, err := shell.ExecuteScript(script.Script)
 
-					if err != nil {
-						exec.logger.Error(err, "Error saving the output")
-						return "", err
-					}
-					return output, nil
-				})
+						if err != nil {
+							exec.logger.Error(err, "Script execution failed", "scriptId", "")
+							return "", err
+						}
 
-				// register jobs to scheduler
-				exec.scheduler.ScheduleJob(ctx, functionJob, cronTrigger)
+						//logging.SaveOutputToLog(output, exec.outputFile)
+						err = gpb.SaveOutputToPb(output, exec.outputFile)
 
-				// Add to state store
-				exec.jobs[script.Id] = script
-			}
+						if err != nil {
+							exec.logger.Error(err, "Error saving the output")
+							return "", err
+						}
+						return output, nil
+					})
+
+					// register jobs to scheduler
+					exec.scheduler.ScheduleJob(ctx, functionJob, cronTrigger)
+
+					// Add to state store
+					exec.jobs[script.Id] = script
+
+					exec.logger.Info("Job Submitted sucessfully...")
+				}
+			}()
 
 		case <-ctx.Done():
-			exec.wg.Done()
+			exec.logger.Info("Stopped executors...")
+			close(sem)
 			return
 		}
 	}

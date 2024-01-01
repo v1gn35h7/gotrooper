@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -43,27 +44,32 @@ func (hw *harvestWorkerMock) harvest() {
 	if finfo.Size() != 0 && finfo.Size() > hw.prevFileSize {
 		hw.prevFileSize = finfo.Size()
 
-		for {
-			rb, err := hw.outputFile.File.Read(hw.fragmentData) //, int64(harvestPoint))
+		// for {
+		// 	rb, err := hw.outputFile.File.Read(hw.fragmentData) //, int64(harvestPoint))
 
-			if err != nil {
-				if err.Error() == "EOF" {
-					break
-				}
-				hw.logger.Error(err, "Falied to read output file")
-			} else {
-				if rb == 0 {
-					break
-				}
+		// 	if err != nil {
+		// 		if err.Error() == "EOF" {
+		// 			break
+		// 		}
+		// 		hw.logger.Error(err, "Falied to read output file")
+		// 	} else {
+		// 		if rb == 0 {
+		// 			break
+		// 		}
 
-				hw.fragmentSize += int64(rb)
+		// 		hw.fragmentSize += int64(rb)
 
-				if hw.fragmentSize > 5 {
-					hw.parseFragmentFromBytes()
-				}
+		// 		if hw.fragmentSize > 5 {
+		// 			hw.parseFragmentFromBytes()
+		// 		}
 
-			}
-		}
+		// 	}
+		// }
+
+		scanner := bufio.NewScanner(hw.outputFile.File)
+
+		found := scanner.Scan("")
+
 	}
 
 }
@@ -109,7 +115,6 @@ func TestHarvestWorker(t *testing.T) {
 
 	if outputFilePath == "" {
 		outputFilePath = filepath.Join(homeDir, "gotrooper.log")
-
 	}
 
 	file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0777)

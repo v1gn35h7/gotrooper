@@ -6,9 +6,7 @@ import (
 	"github.com/reugn/go-quartz/quartz"
 )
 
-func TooperScheduler() (quartz.Scheduler, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
-
+func TooperScheduler(ctx context.Context) quartz.Scheduler {
 	// create scheduler
 	sched := quartz.NewStdScheduler()
 
@@ -16,7 +14,7 @@ func TooperScheduler() (quartz.Scheduler, context.CancelFunc) {
 	sched.Start(ctx)
 
 	// wait for all workers to exit
-	// sched.Wait(ctx)
+	//sched.Wait(ctx)
 
-	return sched, cancel
+	return sched
 }
