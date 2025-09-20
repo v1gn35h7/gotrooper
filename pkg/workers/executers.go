@@ -10,9 +10,8 @@ import (
 	"github.com/go-logr/zerologr"
 	"github.com/reugn/go-quartz/quartz"
 	"github.com/v1gn35h7/gotrooper/internal/goshell"
-	gpb "github.com/v1gn35h7/gotrooper/internal/pb"
 	"github.com/v1gn35h7/gotrooper/pb"
-	"github.com/v1gn35h7/gotrooper/pkg/shell"
+	trooper "github.com/v1gn35h7/gotrooper/pkg/goTrooper"
 )
 
 type executor struct {
@@ -73,26 +72,14 @@ func execWorkers(ctx context.Context, id int, exec *executor) {
 
 					// create jobs
 					cronTrigger, _ := quartz.NewCronTrigger(script.Frequency)
-					functionJob := quartz.NewFunctionJob(func(_ context.Context) (string, error) {
-						output, err := shell.ExecuteScript(script.Script)
-
-						if err != nil {
-							exec.logger.Error(err, "Script execution failed", "scriptId", "")
-							return "", err
-						}
-
-						//logging.SaveOutputToLog(output, exec.outputFile)
-						err = gpb.SaveOutputToPb(output, exec.outputFile)
-
-						if err != nil {
-							exec.logger.Error(err, "Error saving the output")
-							return "", err
-						}
-						return output, nil
-					})
+					shellJob := trooper.NewShellJob(
+						script.Script,
+						exec.outputFile,
+						exec.logger)
+					jobDetail := quartz.NewJobDetail(shellJob, quartz.NewJobKey(script.Id))
 
 					// register jobs to scheduler
-					exec.scheduler.ScheduleJob(ctx, functionJob, cronTrigger)
+					exec.scheduler.ScheduleJob(jobDetail, cronTrigger)
 
 					// Add to state store
 					exec.jobs[script.Id] = script

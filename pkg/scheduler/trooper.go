@@ -8,7 +8,7 @@ import (
 
 func TooperScheduler(ctx context.Context) quartz.Scheduler {
 	// create scheduler
-	sched := quartz.NewStdScheduler()
+	sched, _ := quartz.NewStdScheduler()
 
 	// async start scheduler
 	sched.Start(ctx)

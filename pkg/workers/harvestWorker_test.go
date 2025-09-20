@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -66,9 +65,9 @@ func (hw *harvestWorkerMock) harvest() {
 		// 	}
 		// }
 
-		scanner := bufio.NewScanner(hw.outputFile.File)
+		// scanner := bufio.NewScanner(hw.outputFile.File)
 
-		found := scanner.Scan("")
+		// scanner.Scan("") // Removed unused variable assignment
 
 	}
 
