@@ -2,7 +2,9 @@ package gotrooper
 
 import (
 	"fmt"
+	"log/slog"
 
+	"github.com/mbndr/figlet4go"
 	"github.com/spf13/cobra"
 	"github.com/v1gn35h7/gotrooper/internal/config"
 	"github.com/v1gn35h7/gotrooper/pkg/cmd/cli"
@@ -12,6 +14,7 @@ import (
 var (
 	configPath string
 	verbose    bool
+	ascii      = figlet4go.NewAsciiRender()
 )
 
 func NewCommand() *cobra.Command {
@@ -23,7 +26,7 @@ func NewCommand() *cobra.Command {
 			printLogo()
 
 			// Init read config
-			fmt.Println("Config path set to: ", configPath)
+			slog.Info("Config path set", slog.String("configPath", configPath))
 			config.ReadConfig(configPath, logging.Logger())
 		},
 	}
@@ -42,20 +45,15 @@ func NewCommand() *cobra.Command {
 }
 
 func printLogo() {
-	fmt.Println("############################################################################################################################################")
-	fmt.Println("                                                         ")
-	fmt.Println("                                                         ")
-	fmt.Println("        \"\"\"\"\"\"\"                                   ")
-	fmt.Println("       \"\"       \"\"                                  ")
-	fmt.Println("      \"\"                                              ")
-	fmt.Println("      \"\"                                               ")
-	fmt.Println("      \"\"                \"\"\"\"\"\"  \"\"\"\"\"\"  \"\"\"\"\"\"  \"\"\"\"\"  \"\"\"\"\"  \"\"\"\"\"  \"\"\"\"\"   \"\"\"\"\"\" ")
-	fmt.Println("      \"\"                \"        \"       \"       \"    	 \"							  \"	 \"	 \"			   \"		\" ")
-	fmt.Println("      \"\"         \"\"   \"        \"       \"       \"        \"  \" 	 \"	 \"		 \"	  \"	 \"	 \"			   \"		\" ")
-	fmt.Println("       \"\"        \"\"   \"        \"       \"       \" \"\"\"\"   						  \"\"\"\"	 \"\"\"\"\"    \" \"\"\"\" ")
-	fmt.Println("         \"\"      \"\"   \"        \"       \"       \"     	\"	 \"		 \"	 \"		 \"	  \"		 \"			   \"		\" ")
-	fmt.Println("           \"\"\"\"\"\"   \"\"\"\"\"\"       \"       \"    	\"	 \"\"\"\"\"  \"\"\"\"\"   \"		 \"\"\"\"\"	   \"       \" ")
-	fmt.Println("                                                         ")
-	fmt.Println("                                                         ")
-	fmt.Println("############################################################################################################################################")
+	// Adding the colors to RenderOptions
+	options := figlet4go.NewRenderOptions()
+	options.FontColor = []figlet4go.Color{
+		// Colors can be given by default ansi color codes...
+		figlet4go.ColorMagenta,
+	}
+	options.FontName = "larry3d"
+
+	renderStr, _ := ascii.RenderOpts("GoTrooper", options)
+
+	fmt.Print(renderStr)
 }

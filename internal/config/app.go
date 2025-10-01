@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/go-logr/zerologr"
 	"github.com/spf13/viper"
@@ -22,5 +23,5 @@ func ReadConfig(configPath string, logger zerologr.Logger) {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	fmt.Println(viper.AllSettings())
+	slog.Debug("Config values", fmt.Sprintf("%v", viper.AllSettings()))
 }
